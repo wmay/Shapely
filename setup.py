@@ -360,6 +360,14 @@ try:
         libraries=libraries,
         extra_link_args=extra_link_args,))
 
+    ext_modules.append(DistutilsExtension(
+        "shapely.vectorized.vectorfuncs",
+        sources=["shapely/vectorized/vectorfuncs.pyx"],
+        include_dirs=include_dirs,
+        library_dirs=library_dirs,
+        libraries=libraries,
+        extra_link_args=extra_link_args,))
+
 except ImportError:
     log.info("Numpy or Cython not available, shapely.vectorized submodule "
              "not being built.")
