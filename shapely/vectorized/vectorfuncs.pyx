@@ -10,7 +10,12 @@ cimport numpy as np
 include "../_geos.pxi"
 from ctypes import byref, c_double
 from shapely.geos import TopologicalError, lgeos
+from shapely.geometry.base import geom_factory
 from shapely.impl import *
+
+
+get_pointers = np.frompyfunc(lambda x: x._geom, 1, 1)
+make_geoms = np.frompyfunc(geom_factory, 1, 1)
 
 
 class ValidatingVec(object):
@@ -40,94 +45,86 @@ class DelegatingVec(ValidatingVec):
                         self.fn.__name__, repr(geom)))
         raise err
 
+
+class UnaryVec(ValidatingVec):
     
-class UnaryPredicateVec(DelegatingVec):
+    def __init__(self, name):
+        vec_func = np.frompyfunc(lgeos.methods[name], 1, 1)
+        def un_func(this):
+            p1 = get_pointers(this)
+            return vec_func(p1)
+        self.fn = un_func
+
+    
+class BinaryVec(ValidatingVec):
+
+    def __init__(self, name):
+        vec_func = np.frompyfunc(lgeos.methods[name], 2, 1)
+        def bin_func(this, others):
+            p1 = get_pointers(this)
+            p2 = get_pointers(others)
+            return vec_func(p1, p2)
+        self.fn = bin_func
+
+    
+class UnaryPredicateVec(UnaryVec):
 
     def __call__(self, this):
-        cdef int i
-        cdef unsigned int n = this.size
-        cdef np.ndarray[np.uint8_t, ndim=1, cast=True] result = np.empty(n, dtype=np.uint8)
-        # self._validate(this)
-        for i in range(n):
-            result[i] = self.fn(this[i]._geom)
-        return result.view(dtype=np.bool)
+        return self.fn(this).astype(bool)
 
     
-class BinaryPredicateVec(DelegatingVec):
+class BinaryPredicateVec(BinaryVec):
 
     def __call__(self, this, others):
-        cdef int i
-        cdef unsigned int n = others.size
-        cdef np.ndarray[np.uint8_t, ndim=1, cast=True] result = np.empty(n, dtype=np.uint8)
-        
-        self._validate(this)
-        # self._validate(others, stop_prepared=True)
-        p1 = this._geom
-        for i in range(n):
-            result[i] = self.fn(p1, others[i]._geom)
-        return result.view(dtype=np.bool)
+        return self.fn(this, others).astype(bool)
 
     
 class UnaryRealPropertyVec(DelegatingVec):
 
-    def __call__(self, this):
-        cdef int i
-        cdef unsigned int n = this.size
-        result = np.empty(n)
-        # self._validate(this)
+    def __init__(self, name):
         d = c_double()
-        for i in range(n):
-            retval = self.fn(this[i]._geom, byref(d))
-            result[i] = d.value
-        return result
+        dptr = byref(d)
+        def real_func(this):
+            lgeos.methods[name](this, dptr)
+            return d.value
+        vec_func = np.frompyfunc(real_func, 1, 1)
+        def un_func(this):
+            p1 = get_pointers(this)
+            return vec_func(p1)
+        self.fn = un_func
+
+    def __call__(self, this):
+        return self.fn(this).astype(float)
 
     
 class BinaryRealPropertyVec(DelegatingVec):
+    
+    def __init__(self, name):
+        d = c_double()
+        dptr = byref(d)
+        def real_func(this, others):
+            lgeos.methods[name](this, others, dptr)
+            return d.value
+        vec_func = np.frompyfunc(real_func, 2, 1)
+        def bin_func(this, others):
+            p1 = get_pointers(this)
+            p2 = get_pointers(others)
+            return vec_func(p1, p2)
+        self.fn = bin_func
 
     def __call__(self, this, others):
-        cdef int i
-        cdef unsigned int n = others.size
-        result = np.empty(n)
-        # cdef np.ndarray[np.uint8_t, ndim=1, cast=True] result = np.empty(n, dtype=np.uint8)
-        
-        self._validate(this)
-        # self._validate(others, stop_prepared=True)
-        p1 = this._geom
-        d = c_double()
-        for i in range(n):
-            retval = self.fn(p1, others[i]._geom, byref(d))
-            result[i] = d.value
-        return result
+        return self.fn(this, others).astype(float)
 
     
-class UnaryTopologicalOpVec(DelegatingVec):
+class UnaryTopologicalOpVec(UnaryVec):
 
     def __call__(self, this, *args):
-        cdef int i
-        cdef unsigned int n = this.size
-        result = np.empty(n, dtype = int)
-        # self._validate(this)
-        for i in range(n):
-            result[i] = self.fn(this[i]._geom, *args)
-        return result
+        return self.fn(this)
 
-    
-class BinaryTopologicalOpVec(DelegatingVec):
+class BinaryTopologicalOpVec(BinaryVec):
 
     def __call__(self, this, others, *args):
-        cdef int i
-        cdef unsigned int n = others.size
-        result = np.empty(n, dtype = int)
-        self._validate(this)
-        # self._validate(others, stop_prepared=True)
-        p1 = this._geom
-        for i in range(n):
-            result[i] = self.fn(p1, others[i]._geom, *args)
-        # if product is None:
-        #     err = TopologicalError(
-        #         "This operation could not be performed. Reason: unknown")
-        #     self._check_topology(err, this, others)
-        return result
+        return self.fn(this, others)
 
 
 
