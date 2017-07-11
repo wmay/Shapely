@@ -115,16 +115,17 @@ class BinaryRealPropertyVec(DelegatingVec):
     def __call__(self, this, others):
         return self.fn(this, others).astype(float)
 
-    
+
 class UnaryTopologicalOpVec(UnaryVec):
 
     def __call__(self, this, *args):
-        return self.fn(this).astype(int)
+        return make_geoms(self.fn(this).astype(int))
 
+    
 class BinaryTopologicalOpVec(BinaryVec):
 
     def __call__(self, this, others, *args):
-        return self.fn(this, others).astype(int)
+        return make_geoms(self.fn(this, others).astype(int))
 
 
 
