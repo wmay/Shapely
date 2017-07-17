@@ -3,10 +3,7 @@ vectorized version of topology.py, predicates.py, and impl.py.
 """
 
 
-import cython
-cimport cpython.array
 import numpy as np
-cimport numpy as np
 include "../_geos.pxi"
 from ctypes import byref, c_double
 from shapely.geos import TopologicalError, lgeos
@@ -154,5 +151,9 @@ if lgeos.geos_version >= (3, 2, 0):
     imp.update(impl_vectorized_items(IMPL320))
 if lgeos.geos_version >= (3, 3, 0):
     imp.update(impl_vectorized_items(IMPL330))
+
+# now get rid of some uncooperative functions
+discard_funcs = ['topology_preserve_simplify', 'equals_exact']
+imp = { k: v for k, v in imp.items() if k not in discard_funcs }
 
 VectorizedImplementation = imp
