@@ -18,7 +18,7 @@ polys = np.array([ Polygon([(10,10), (10,100), (i,i), (100, 10)]) for i in range
 
 def generate_test(fname, f):
     fclass = type(f)
-    if issubclass(fclass, UnaryVec) or isinstance(fclass, UnaryRealPropertyVec):
+    if issubclass(fclass, UnaryVec) or isinstance(f, UnaryRealPropertyVec):
         def get_results(fname, f):
             results1 = f(polys)
             results2 = np.array([ DefaultImplementation[fname](polys[i]) for i in range(500) ])
@@ -38,7 +38,7 @@ def generate_test(fname, f):
         
     globals()['test_vectorized_' + fname] = test_f
 
-for fname, f in list(VectorizedImplementation.map.items())[:5]:
+for fname, f in VectorizedImplementation.map.items():
     generate_test(fname, f)
 
 # def test_all_vectorized_functions():
