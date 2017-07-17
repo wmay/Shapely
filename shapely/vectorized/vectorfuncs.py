@@ -4,7 +4,7 @@ vectorized version of topology.py, predicates.py, and impl.py.
 
 
 import numpy as np
-include "../_geos.pxi"
+# include "../_geos.pxi"
 from ctypes import byref, c_double
 from shapely.geos import TopologicalError, lgeos
 from shapely.geometry.base import geom_factory
@@ -130,11 +130,12 @@ class BinaryTopologicalOpVec(BinaryVec):
 # this section reproduces impl.py:
 
 vectorized_dict = {UnaryPredicate: UnaryPredicateVec,
-                   BinaryPredicate: BinaryPredicateVec,
+                   # BinaryPredicate: BinaryPredicateVec,
                    UnaryRealProperty: UnaryRealPropertyVec,
                    BinaryRealProperty: BinaryRealPropertyVec,
-                   UnaryTopologicalOp: UnaryTopologicalOpVec,
-                   BinaryTopologicalOp: BinaryTopologicalOpVec}
+                   # UnaryTopologicalOp: UnaryTopologicalOpVec,
+                   # BinaryTopologicalOp: BinaryTopologicalOpVec
+}
 
 # return tuples of function names and functions, using the
 # vectorized_dict to replace normal function generating classes with
@@ -154,6 +155,6 @@ if lgeos.geos_version >= (3, 3, 0):
 
 # now get rid of some uncooperative functions
 discard_funcs = ['topology_preserve_simplify', 'equals_exact']
-imp = { k: v for k, v in imp.items() if k not in discard_funcs }
+imp = GEOSImpl({ k: v for k, v in list(imp.map.items()) if k not in discard_funcs })
 
 VectorizedImplementation = imp
