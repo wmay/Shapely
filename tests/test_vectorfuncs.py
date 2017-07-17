@@ -1,6 +1,7 @@
 import pytest
 
 from shapely.geometry import Point, Polygon
+from shapely.prepared import prep
 from shapely.impl import DefaultImplementation
 
 try:
@@ -15,6 +16,7 @@ except ImportError:
 points = np.array([Point(i, i) for i in range(500)], dtype=object)
 poly = Polygon([(10,10), (10,100), (100,100), (100, 10)])
 polys = np.array([ Polygon([(10,10), (10,100), (i,i), (100, 10)]) for i in range(20, 520) ])
+prep_poly = prep(poly)
 
 def generate_test(fname, f):
     fclass = type(f)
@@ -22,6 +24,11 @@ def generate_test(fname, f):
         def get_results(fname, f):
             results1 = f(polys)
             results2 = np.array([ DefaultImplementation[fname](polys[i]) for i in range(500) ])
+            return results1, results2
+    elif fname[:8] == 'prepared':
+        def get_results(fname, f):
+            results1 = f(prep_poly, points)
+            results2 = np.array([ DefaultImplementation[fname](prep_poly, points[i]) for i in range(500) ])
             return results1, results2
     else:
         def get_results(fname, f):
@@ -32,7 +39,7 @@ def generate_test(fname, f):
     def test_f():
         r1, r2 = get_results(fname, f)
         # convert pointers to shapely geometries if needed
-        if isinstance(fclass, UnaryTopologicalOpVec) or isinstance(fclass, BinaryTopologicalOpVec):
+        if isinstance(f, UnaryTopologicalOpVec) or isinstance(f, BinaryTopologicalOpVec):
             r2 = make_geoms(r2)
         assert((r1 == r2).all())
         
